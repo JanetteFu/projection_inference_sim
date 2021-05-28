@@ -86,21 +86,27 @@ round(posterior_interval(as.matrix(projg2)),1)
 Now we keep the $y \sim Poisson$, while change the variables (x1 and x3) to be generated from a normal distribution  
 ```{r}
 dfs <- tibble(
-  x1= rnorm(200,mean=0.2,sd=0.05),
-  x3= rnorm(200,mean=0.05,sd=0.025),
-  x2= - x1 - x3/2,
-  x4= 1 - x1 - x2 - x3)
+  x1= rnorm(200,mean=0.1,sd=0.1),
+  x3= rnorm(200,mean=0.05,sd=0.05),
+  x2= rnorm(200,-x1 -x3/2,sd=0.05),
+  x4= rnorm(200,-x1 -x2 -x3,sd=0.05))
 
-mean.y3 <- exp(-5.8 + 6.3*dfs$x1 + 15.2*dfs$x2)
+mean.y3 <- exp(-5.8 + 6.3*dfs$x1 - 15.2*dfs$x2)
 dfs$y <- rpois(200,mean.y3)
 ```
 
 ```{r}
-fitg3 <- stan_glm(y ~ x1 + x2 + x3 + x4, data = dfs, na.action = na.fail, family=poisson(), seed=SEED)
-summary(fitg3)
+ggpairs(dfs,diag=list(continuous="barDiag"))
 ```
 
-Looks good here:  
+```{r}
+fitg3 <- stan_glm(y ~ x1 + x2 + x3 + x4, data = dfs, family=poisson(), seed=SEED)
+summary(fitg3)
+mcmc_areas(as.matrix(fitg3),prob_outer = .99)
+```
+
+The estimated value by glm looks good. However, with the projection method, the model only identify x2 as the suggested variable.  
+Is it caused by the extremely high correlation between x1 and x2?  
 ```{r}
 fitg_cv3 <- cv_varsel(fitg3, method='forward', cv_method='LOO')
 nv3 <- suggest_size(fitg_cv3, alpha=0.1)
